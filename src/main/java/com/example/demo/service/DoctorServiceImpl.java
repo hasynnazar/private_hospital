@@ -1,8 +1,12 @@
 package com.example.demo.service;
 
 import com.example.demo.DTO.DoctorDTO;
+import com.example.demo.exception.ConflictException;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.model.Doctor;
 import com.example.demo.repository.DoctorRepository;
+import com.example.demo.repository.PatientRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,12 +16,18 @@ import java.util.stream.Collectors;
 public class DoctorServiceImpl implements DoctorService {
 
     private final DoctorRepository doctorRepository;
+    private final PatientRepository patientRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public DoctorServiceImpl(DoctorRepository doctorRepository) {
+    public DoctorServiceImpl(DoctorRepository doctorRepository,
+                             PatientRepository patientRepository,
+                             PasswordEncoder passwordEncoder) {
         this.doctorRepository = doctorRepository;
+        this.patientRepository = patientRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    // 1. Отримуємо всіх лікарів вже як DTO
+
     @Override
     public List<DoctorDTO> findAllDoctors() {
         return doctorRepository.findAll().stream()
@@ -25,15 +35,15 @@ public class DoctorServiceImpl implements DoctorService {
                 .collect(Collectors.toList());
     }
 
-    // 2. Пошук одного лікаря теж повертає DTO
+
     @Override
     public DoctorDTO findDoctorById(Long id) {
         return doctorRepository.findById(id)
                 .map(this::convertToDto)
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Lekarz z id " + id + " nie istnieje"));
     }
 
-    // 3. Пошук за професією — теж DTO
+
     @Override
     public List<DoctorDTO> findAllDoctorsByProfession(String profession) {
         return doctorRepository.findByProfession(profession).stream()
@@ -41,14 +51,25 @@ public class DoctorServiceImpl implements DoctorService {
                 .collect(Collectors.toList());
     }
 
-    // 4. Зберігання: приймаємо Entity (або DTO), повертаємо DTO
+
     @Override
     public DoctorDTO saveDoctor(Doctor doctor) {
+        if (doctor.getEmail() == null || doctor.getEmail().isBlank()
+                || doctor.getPassword() == null || doctor.getPassword().length() < 6) {
+            throw new IllegalArgumentException("Email oraz hasło (min. 6 znaków) są wymagane");
+        }
+        String email = doctor.getEmail().trim().toLowerCase();
+        if (doctorRepository.findByEmail(email).isPresent() || patientRepository.existsByEmail(email)) {
+            throw new ConflictException("Konto z takim adresem email już istnieje");
+        }
+        doctor.setEmail(email);
+        doctor.setLogin(email);
+        doctor.setPassword(passwordEncoder.encode(doctor.getPassword()));
         Doctor savedDoctor = doctorRepository.save(doctor);
         return convertToDto(savedDoctor);
     }
 
-    // МАПЕР (службовий метод для перетворення)
+
     private DoctorDTO convertToDto(Doctor doctor) {
         DoctorDTO dto = new DoctorDTO();
         dto.setId(doctor.getId());
@@ -57,6 +78,7 @@ public class DoctorServiceImpl implements DoctorService {
         dto.setProfession(doctor.getProfession());
         dto.setEmail(doctor.getEmail());
         dto.setPhone(doctor.getPhone());
+        dto.setImageUrl(doctor.getImageUrl());
         return dto;
     }
 }

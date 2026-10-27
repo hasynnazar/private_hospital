@@ -3,21 +3,18 @@ package com.example.demo.controller;
 import com.example.demo.DTO.DoctorDTO;
 import com.example.demo.model.Doctor;
 import com.example.demo.service.DoctorService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("api/v1/doctors")
 @CrossOrigin(origins = "http://localhost:5173")
 public class DoctorController {
 
     private final DoctorService doctorService;
-
-    public DoctorController(DoctorService doctorService) {
-        this.doctorService = doctorService;
-    }
-
 
     @GetMapping
     public List<DoctorDTO> findAllDoctors() {
