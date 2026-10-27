@@ -26,3 +26,12 @@ build/
 # Crash logs
 hs_err_pid*
 replay_pid*
+
+### Frontend / Node ###
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
